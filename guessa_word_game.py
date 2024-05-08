@@ -53,7 +53,7 @@ class GuessaWordGame:
 
     def is_finished(self) -> bool:
         if self.guess_results:
-            return self.word == self.guess_results[-1].is_correct()
+            return self.guess_results[-1].is_correct()
         else:
             return False
 
