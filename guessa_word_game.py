@@ -82,27 +82,23 @@ class GuessResult:
             return True
 
 
+class GameStatus(Enum):
+    NOT_STARTED_YET = 1
+    PLAYING = 2
+    WON = 3
+    LOST = 4
+
+
 class GuessaWordGame:
 
     def __init__(self, word: str):
         self.word = word
         self.guess_results: List[GuessResult] = []
         self.all_incorrect = ""
+        self.game_status: GameStatus = GameStatus.NOT_STARTED_YET
 
-    def is_not_started(self):
-        return len(self.guess_results) == 0
-
-    def is_finished(self) -> bool:
-        if self.guess_results:
-            return self.guess_results[-1].is_solved()
-        else:
-            return False
-
-    def get_last_result(self):
-        if self.guess_results:
-            return self.guess_results[-1]
-        else:
-            return None
+    def is_ready_to_play(self):
+        return self.game_status is GameStatus.NOT_STARTED_YET or self.game_status is GameStatus.PLAYING
 
     def get_word_length(self):
         return len(self.word)
@@ -113,6 +109,13 @@ class GuessaWordGame:
             if new_wrong not in self.all_incorrect:
                 self.all_incorrect += new_wrong
         self.guess_results.append(new_result)
+        if self.game_status is GameStatus.NOT_STARTED_YET:
+            self.game_status = GameStatus.PLAYING
+        elif self.game_status is GameStatus.PLAYING:
+            if self.guess_results[-1].is_solved():
+                self.game_status = GameStatus.WON
+            elif len(self.guess_results) >= 6:
+                self.game_status = GameStatus.LOST
 
     def __str__(self) -> str:
         if self.guess_results:
@@ -124,7 +127,7 @@ class GuessaWordGame:
 def main():
     game = GuessaWordGame("sweet")
     user_input = ""
-    while user_input != "quit" and not game.is_finished():
+    while user_input != "quit" and game.is_ready_to_play():
         user_input = input("Enter your guess:")
         game.make_new_guess(user_input)
         print(game)

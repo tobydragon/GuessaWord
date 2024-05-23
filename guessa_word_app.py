@@ -2,7 +2,7 @@ import random
 from flask import Flask, request
 
 import guess_word_html_creator
-from guessa_word_game import GuessaWordGame, GuessResult
+from guessa_word_game import GuessaWordGame, GuessResult, GameStatus
 from word_data_source import find_words_with_lettercount, create_individual_word_count_map
 
 
@@ -19,12 +19,15 @@ def home():
         if my_game.get_word_length() == len(new_guess):
             my_game.make_new_guess(new_guess)
 
-    if my_game.is_not_started():
+    if my_game.game_status is GameStatus.NOT_STARTED_YET:
         html = "Make first guess<br>" + guess_word_html_creator.create_guess_and_give_forms()
     else:
         html = guess_word_html_creator.create_guess_result_list_html(my_game.guess_results) + "<br>"
-        if my_game.is_finished():
+        if my_game.game_status is GameStatus.WON:
             html += "<font size=12> You Win!!!</font>"
+        elif my_game.game_status is GameStatus.LOST:
+            html += "<font size=12> Too many guesses, You Lose, but you can keep trying!!!</font>"
+            html += guess_word_html_creator.create_guess_and_give_forms()
         else:
             html += guess_word_html_creator.create_guess_and_give_forms()
     return html
