@@ -6,12 +6,28 @@ class LetterMatchedType(Enum):
     CORRECT = 1
     GOOD_BUT_WRONG_SPOT = 2
     WRONG = 3
+    UNDECIDED_YET = 4
 
 
 class LetterMatchResult:
     def __init__(self, letter:str, letter_matched_type: LetterMatchedType):
         self.letter = letter
         self.letter_matched_type = letter_matched_type
+
+    def get_match_info_letter(self):
+        if self.letter_matched_type is LetterMatchedType.CORRECT:
+            return "C"
+        elif self.letter_matched_type is LetterMatchedType.GOOD_BUT_WRONG_SPOT:
+            return "G"
+        elif self.letter_matched_type is LetterMatchedType.WRONG:
+            return "W"
+        elif self.letter_matched_type is LetterMatchedType.UNDECIDED_YET:
+            return "U"
+        else:
+            raise RuntimeError(f"Unrecognized enum:{self.letter=}, {self.letter_matched_type=}")
+
+    def __repr__(self):
+        return f"{self.letter}:{self.get_match_info_letter()}"
 
 
 class GuessResult:
@@ -31,31 +47,35 @@ class GuessResult:
     def calc_all_wrong_letters(self) -> str:
         return "".join([letter_result.letter for letter_result in self.letter_result_list if letter_result.letter_matched_type == LetterMatchedType.WRONG])
 
+    def create_matching_info_str(self):
+        return "".join([letter_result.get_match_info_letter() for letter_result in self.letter_result_list])
+
     @staticmethod
     def _create_letter_result_list(answer: str, guess: str) -> List[LetterMatchResult]:
         letter_result_list: List[LetterMatchResult] = []
         for i in range(len(guess)):
             if guess[i] == answer[i]:
                 letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.CORRECT))
-            elif guess[i] in answer and GuessResult._char_isnt_noted_yet(guess[i], answer, letter_result_list):
-                letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.GOOD_BUT_WRONG_SPOT))
             else:
-                letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.WRONG))
+                letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.UNDECIDED_YET))
+        for i in range(len(guess)):
+            if letter_result_list[i].letter_matched_type == LetterMatchedType.UNDECIDED_YET:
+                if guess[i] in answer and GuessResult._char_isnt_noted_yet(guess[i], answer, letter_result_list):
+                    letter_result_list[i].letter_matched_type = LetterMatchedType.GOOD_BUT_WRONG_SPOT
+                else:
+                    letter_result_list[i].letter_matched_type = LetterMatchedType.WRONG
         return letter_result_list
 
     @staticmethod
-    def _char_isnt_noted_yet(char: str, answer, letter_result_list_so_far) -> bool:
+    def _char_isnt_noted_yet(char: str, answer: str, letter_result_list_so_far: List[LetterMatchResult]) -> bool:
         """returns True if all of this specific char in answer have not already been noted yet"""
         already_noted_count = 0
         for letter_result in letter_result_list_so_far:
-            if letter_result.letter == char and letter_result.letter_matched_type != LetterMatchedType.WRONG:
+            if letter_result.letter == char and (letter_result.letter_matched_type is LetterMatchedType.CORRECT or letter_result.letter_matched_type is LetterMatchedType.GOOD_BUT_WRONG_SPOT):
                 already_noted_count += 1
-        # len([letter_result for letter_result in letter_result_list_so_far if letter_result.letter == char and letter_result.letter_matched_type != LetterMatchedType.WRONG ])
-        # len(list(filter(lambda letter_result: letter_result.letter == char and letter_result.letter_matched_type != LetterMatchedType.WRONG, letter_result_list_so_far)))
-
-        total: int = answer.count(char)
+        total = answer.count(char)
         if already_noted_count > total:
-            raise RuntimeError("Should never have more noted than total")
+            raise RuntimeError(f"Should never have more noted than total for:{char=}, {answer=}, {letter_result_list_so_far=}, {already_noted_count=}. {total=}")
         elif already_noted_count == total:
             return False
         else:
@@ -69,6 +89,9 @@ class GuessaWordGame:
         self.guess_results: List[GuessResult] = []
         self.all_incorrect = ""
 
+    def is_not_started(self):
+        return len(self.guess_results) == 0
+
     def is_finished(self) -> bool:
         if self.guess_results:
             return self.guess_results[-1].is_solved()
@@ -80,6 +103,9 @@ class GuessaWordGame:
             return self.guess_results[-1]
         else:
             return None
+
+    def get_word_length(self):
+        return len(self.word)
 
     def make_new_guess(self, guessed_word: str) -> None:
         new_result = GuessResult(self.word, guessed_word)

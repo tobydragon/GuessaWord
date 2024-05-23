@@ -9,32 +9,25 @@ from word_data_source import find_words_with_lettercount, create_individual_word
 app = Flask(__name__)
 all_5_letter_words = find_words_with_lettercount(create_individual_word_count_map("data/english.txt"), 5)
 my_game = GuessaWordGame(random.choice(all_5_letter_words))
-# my_game = GuessaWordGame("lured")
+# my_game = GuessaWordGame("sigma")
 
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     new_guess = request.form.get("guess", "")
-    html = None
     if new_guess != "":
-        my_game.make_new_guess(new_guess)
-        html = guess_word_html_creator.create_guess_result_list_html(my_game.guess_results)
-    if html:
-        html += "<br>"
+        if my_game.get_word_length() == len(new_guess):
+            my_game.make_new_guess(new_guess)
+
+    if my_game.is_not_started():
+        html = "Make first guess<br>" + guess_word_html_creator.create_guess_and_give_forms()
     else:
-        html = "Make first guess<br>"
-    guess_form = """
-                <form action="/" method="POST">
-                     <input type='text' name='guess'>
-                     <input type='submit' value='Guess'>
-                </form>
-            """
-    give_up_form = """
-                    <form action="/giveup" method="POST">
-                         <input type='submit' value='Give Up?'>
-                    </form>
-                """
-    return html + guess_form + give_up_form
+        html = guess_word_html_creator.create_guess_result_list_html(my_game.guess_results) + "<br>"
+        if my_game.is_finished():
+            html += "<font size=12> You Win!!!</font>"
+        else:
+            html += guess_word_html_creator.create_guess_and_give_forms()
+    return html
 
 
 @app.route("/giveup", methods=["POST"])

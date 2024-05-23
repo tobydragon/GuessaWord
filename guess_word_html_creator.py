@@ -24,3 +24,15 @@ def create_guess_result_html(guess_result: GuessResult):
 
 def create_guess_result_list_html(guess_result_list: List[GuessResult]):
     return "<br>".join(list(map(create_guess_result_html, guess_result_list)))
+
+
+def create_guess_and_give_forms():
+    return """
+        <form action="/" method="POST">
+             <input type='text' name='guess'>
+             <input type='submit' value='Guess'>
+        </form>
+        <form action="/giveup" method="POST">
+             <input type='submit' value='Give Up?'>
+        </form>
+    """
