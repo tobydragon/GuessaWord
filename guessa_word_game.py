@@ -1,40 +1,58 @@
 from typing import Tuple, List
+from enum import Enum
+
+
+class LetterMatchedType(Enum):
+    CORRECT = 1
+    GOOD_BUT_WRONG_SPOT = 2
+    WRONG = 3
+
+
+class LetterMatchResult:
+    def __init__(self, letter:str, letter_matched_type: LetterMatchedType):
+        self.letter = letter
+        self.letter_matched_type = letter_matched_type
 
 
 class GuessResult:
 
     def __init__(self, answer, guess):
         self.answer = answer
-        self.matched, self.correct_but_wrong_place, self.wrong = GuessResult._process_guess(answer, guess)
+        self.guess = guess
+        self.letter_result_list = GuessResult._create_letter_result_list(answer, guess)
 
-    def is_correct(self):
-        return self.matched == self.answer
+    def is_solved(self):
+        if len(self.letter_result_list) == len(self.answer):
+            for letter_result in self.letter_result_list:
+                if letter_result.letter_matched_type != LetterMatchedType.CORRECT:
+                    return False
+            return True
 
-    def __str__(self) -> str:
-        return f"{self.matched=}, {self.correct_but_wrong_place=}, {self.wrong=}"
+    def calc_all_wrong_letters(self) -> str:
+        return "".join([letter_result.letter for letter_result in self.letter_result_list if letter_result.letter_matched_type == LetterMatchedType.WRONG])
 
     @staticmethod
-    def _process_guess(answer, guess: str) -> Tuple[str, str, str]:
-        matched = ""
-        correct_but_wrong_place = ""
-        wrong = ""
+    def _create_letter_result_list(answer: str, guess: str) -> List[LetterMatchResult]:
+        letter_result_list: List[LetterMatchResult] = []
         for i in range(len(guess)):
             if guess[i] == answer[i]:
-                matched += answer[i]
-                correct_but_wrong_place += "-"
-            elif guess[i] in answer and GuessResult._char_isnt_noted_yet(guess[i], answer, matched, correct_but_wrong_place):
-                matched += "-"
-                correct_but_wrong_place += guess[i]
+                letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.CORRECT))
+            elif guess[i] in answer and GuessResult._char_isnt_noted_yet(guess[i], answer, letter_result_list):
+                letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.GOOD_BUT_WRONG_SPOT))
             else:
-                matched += "-"
-                correct_but_wrong_place += "-"
-                wrong += guess[i]
-        return matched, correct_but_wrong_place, wrong
+                letter_result_list.append(LetterMatchResult(guess[i], LetterMatchedType.WRONG))
+        return letter_result_list
 
     @staticmethod
-    def _char_isnt_noted_yet(char: str, answer: str, matched: str, correct_but_wrong_place: str) -> bool:
-        """returns True if all of this specific char in answer have already been noted in correct or wrong place"""
-        already_noted_count: int = matched.count(char)+correct_but_wrong_place.count(char)
+    def _char_isnt_noted_yet(char: str, answer, letter_result_list_so_far) -> bool:
+        """returns True if all of this specific char in answer have not already been noted yet"""
+        already_noted_count = 0
+        for letter_result in letter_result_list_so_far:
+            if letter_result.letter == char and letter_result.letter_matched_type != LetterMatchedType.WRONG:
+                already_noted_count += 1
+        # len([letter_result for letter_result in letter_result_list_so_far if letter_result.letter == char and letter_result.letter_matched_type != LetterMatchedType.WRONG ])
+        # len(list(filter(lambda letter_result: letter_result.letter == char and letter_result.letter_matched_type != LetterMatchedType.WRONG, letter_result_list_so_far)))
+
         total: int = answer.count(char)
         if already_noted_count > total:
             raise RuntimeError("Should never have more noted than total")
@@ -53,13 +71,19 @@ class GuessaWordGame:
 
     def is_finished(self) -> bool:
         if self.guess_results:
-            return self.guess_results[-1].is_correct()
+            return self.guess_results[-1].is_solved()
         else:
             return False
 
+    def get_last_result(self):
+        if self.guess_results:
+            return self.guess_results[-1]
+        else:
+            return None
+
     def make_new_guess(self, guessed_word: str) -> None:
         new_result = GuessResult(self.word, guessed_word)
-        for new_wrong in new_result.wrong:
+        for new_wrong in new_result.calc_all_wrong_letters():
             if new_wrong not in self.all_incorrect:
                 self.all_incorrect += new_wrong
         self.guess_results.append(new_result)
